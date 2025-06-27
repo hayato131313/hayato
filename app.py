@@ -83,6 +83,16 @@ class RegistrationForm(FlaskForm):
         if User.query.filter_by(email=field.data).first:
             raise ValidationError('入力されたメールアドレスは既に登録されています。')
 
+class UpdateUserForm(FlaskForm):
+    email=StringField('メールアドレス',validators=[DataRequired(),Email('正しいメールアドレスを入力してください。')])
+    username=StringField('ユーザー名',validators=[DataRequired(),])
+    password=PasswordField('パスワード',validators=[EqualTo('pass_confirm',message='パスワードが一致していません。')])
+    pass_confirm=PasswordField('パスワード（確認）')
+    submit=SubmitField('更新')
+
+    def __init__(self, user_id,*args,**kwargs):
+        super(UpdateUserForm,self).__init__(*args,**kwargs)
+        self.id=user_id
 
 
 @app.route('/register',methods=['GET','POST'])
@@ -105,10 +115,23 @@ def user_maintenance():
     users=User.query.order_by(User.id).paginate(page=page,per_page=10)
     return render_template('user_maintenance.html',users=users)
 
+@app.route('<int:user_id>/account',method=['GET','POST'])
+def account(user_id):
+    user=User.query.get_or_404(user_id)
+    form=RegistrationForm(user_id)
+    if form.validate_on_submit():
+        user.username=form.username.data
+        user.email=form.email.data
+        if form.password.data:
+            user.password_hash=form.password.data
+        db.session.commit()
+        flash('ユーザーアカウントが更新されました')
+    elif request.method=='Get':
+        form.username.data=user.username
+        form.email.data=user.email
+    return render_template('account.html',form=form)
+
+
 if __name__=='__main__':
     app.run(debug=True)
-
-
-
     
-
